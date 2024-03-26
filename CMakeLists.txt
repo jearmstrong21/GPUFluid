@@ -19,7 +19,10 @@ function(copyfile dir name ext)
 endfunction()
 
 copyfile(shader quad vert)
-copyfile(shader test frag)
+copyfile(shader simple_fast_init frag)
+copyfile(shader simple_fast_update frag)
+copyfile(shader simple_fast_display frag)
+copyfile(shader copy frag)
 
 include_directories(/opt/homebrew/Cellar/glfw/3.4/include)
 include_directories(include)
