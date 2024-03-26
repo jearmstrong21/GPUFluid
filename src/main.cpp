@@ -5,6 +5,10 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <gen/shader_test_frag.h>
+#include "Computation.h"
+#include "Quad.h"
+
 void myErrorCallback(int error_code, const char* description) {
     std::cout << "GLFW error code " << error_code << ": " << description << std::endl;
 }
@@ -19,7 +23,12 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, true);
 
-    GLFWwindow *window = glfwCreateWindow(800, 800, "GPU Fluid", nullptr, nullptr);
+    int W = 800;
+    int H = 800;
+
+    GLFWwindow *window = glfwCreateWindow(W, H, "GPU Fluid", nullptr, nullptr);
+    W *= 2;
+    H *= 2;
 
     glfwMakeContextCurrent(window);
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
@@ -34,6 +43,8 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 410");
 
+    Computation test(W, H, shader_test_frag, shader_test_frag_len);
+
     float number = 4;
 
     while (!glfwWindowShouldClose(window)) {
@@ -44,7 +55,7 @@ int main() {
         ImGui::Begin("Hello World!");
         ImGui::Text("This is some text.");
         ImGui::SliderFloat("value:", &number, 0, 10);
-        ImGui::Text(std::to_string(number * number).c_str());
+        ImGui::Text("Squared: %f", number * number);
         ImGui::End();
 
         ImGui::Render();
@@ -54,6 +65,10 @@ int main() {
         glViewport(0, 0, width, height);
         glClearColor(0.5, 0.4, 0.3, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        test.uniform("t", number);
+        test.run(nullptr);
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
