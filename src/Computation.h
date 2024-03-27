@@ -18,18 +18,23 @@ class Computation {
     unsigned int id{};
     Quad quad;
 
+    std::map<int, int> u1i;
     std::map<int, float> u1f;
     std::map<int, std::pair<float, float>> u2f;
     std::map<int, int> utex;
+    std::map<int, std::pair<float*, int>> u1fv;
+    std::map<int, std::pair<float*, int>> u2fv;
 
 public:
     Computation(int width, int height, const unsigned char *source, int len);
 
+    void uniform(const std::string &name, int value);
     void uniform(const std::string &name, float value);
     void uniform(const std::string &name, float x, float y);
     void uniform(const std::string &name, const ImageData &tex);
+    void uniform(const std::string &name, float* data, int len, int stride);
 
-    void run(const ImageData *target);
+    void run(const ImageData *target, bool reset=true);
 };
 
 

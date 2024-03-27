@@ -11,9 +11,19 @@ out vec4 col;
 
 #define K 0.2
 #define dt 0.15
-#define VISC 0.55
+//#define VISC 0.55
 
 #define T(x, y) (texture(tex, uv + vec2(x, y) / size))
+
+uniform float viscosity;
+uniform float vorticityConfinement;
+
+#define MAX_SOURCE_COUNT 10
+uniform int sourceCount;
+uniform vec2 sourceLoc[MAX_SOURCE_COUNT];
+uniform vec2 sourceDir[MAX_SOURCE_COUNT];
+uniform float sourceSize[MAX_SOURCE_COUNT];
+uniform float sourceStrength[MAX_SOURCE_COUNT];
 
 void makeSource(inout vec4 fc, inout vec2 extf, vec2 loc, vec2 dir, float size, float strength) {
     float dist=length(uv-loc);
@@ -44,41 +54,25 @@ void main(){
 
     vec2 pdx = S * ddx;
     vec2 laplacian = fr.xy+fl.xy+ft.xy+fd.xy - 4.0 * fc.xy;
-    vec2 viscosity = VISC * laplacian;
+    vec2 viscf = viscosity * laplacian;
 
     vec2 was = uv - dt * fc.xy / size.xy;
     fc.xyw = texture(tex, was).xyw;
 
     vec2 extf = vec2(0);
 
-    #if 0
-    vec2 source = vec2(0.2, 0.5+0.2*cos(0.8*time));
-    float dist = length(uv-source);
-    float f=0.000034/4./(dist*dist+0.0001);
-    float a=3.14+cos(time*3.0)*0.2;
-    vec2 d=vec2(cos(a),sin(a));
-    extf-=f*d;
-    #else
-    #if 0
-    // makeSource(extf, loc, dir, size, strength);
-    makeSource(fc, extf, vec2(.2,.5),vec2(1,0),2.0, 4.0);
-    // makeSource(fc, extf, vec2(.5,.85),vec2(0,-1),1.2, 100.0);
-    #else
-    makeSource(fc,extf,vec2(.1,.5),vec2(1,cos(time)),2.0,4.0);
-    makeSource(fc,extf,vec2(.9,.5),vec2(-1,-0.),2.0,4.0);
-    //makeSource(fc,extf,vec2(.5,.1),vec2(0,1),2.0,4.0);
-    //makeSource(fc,extf,vec2(.5,.9),vec2(0,-1),2.0,4.0);
-    #endif
-    #endif
+    for(int i = 0; i < sourceCount; i++) {
+        vec2 d = sourceDir[i];
+        makeSource(fc, extf, sourceLoc[i], d.x*vec2(cos(d.y),sin(d.y)), sourceSize[i], sourceStrength[i]);
+    }
 
-
-    fc.xy += dt * (viscosity - K/dt*pdx + extf); // forces
+    fc.xy += dt * (viscf - K/dt*pdx + extf); // forces
     fc.xy = max(vec2(0), abs(fc.xy) - 1e-4) * sign(fc.xy);
 
     #if 1
     fc.w = (fr.y - fl.y + fd.x - ft.x);
     vec2 vorticity = vec2(abs(ft.w) - abs(fd.w), abs(fl.w) - abs(fr.w));
-    vorticity *= 0.05 / length(vorticity + 1e-9) * fc.w;
+    vorticity *= vorticityConfinement / length(vorticity + 1e-9) * fc.w;
     // recommend 0.11, not 0.01
     //    if (uv.x<0.02||uv.y<0.02||uv.x>=0.98||uv.y>=0.98)vorticity*=0.;
     vorticity *= smoothstep(.5,.48,abs(uv.x-0.5));

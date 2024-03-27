@@ -51,7 +51,7 @@ Computation::Computation(int width, int height, const unsigned char *source, con
     glDeleteShader(frag);
 }
 
-void Computation::run(const ImageData *target) {
+void Computation::run(const ImageData *target, bool reset) {
     if (target == nullptr) {
         glViewport(0, 0, width, height);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -66,6 +66,9 @@ void Computation::run(const ImageData *target) {
     } else {
         glUniform2f(glGetUniformLocation(id, "size"), target->width, target->height);
     }
+    for(auto [ loc, value ] : u1i) {
+        glUniform1i(loc, value);
+    }
     for(auto [ loc, value ] : u1f) {
         glUniform1f(loc, value);
     }
@@ -75,10 +78,19 @@ void Computation::run(const ImageData *target) {
     for (auto [loc, tex ] : utex) {
         glUniform1i(loc, tex);
     }
-    u1f.clear();
-    u2f.clear();
-    utex.clear();
-    quad.render();
+    for (auto [loc, v] : u1fv) {
+        glUniform1fv(loc, v.second, v.first);
+    }
+    for (auto [loc, v] : u2fv) {
+        glUniform2fv(loc, v.second, v.first);
+    }
+    if (reset) {
+        u1i.clear();
+        u1f.clear();
+        u2f.clear();
+        utex.clear();
+        quad.render();
+    }
     if (target != nullptr) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -86,7 +98,10 @@ void Computation::run(const ImageData *target) {
 
 void Computation::uniform(const std::string &name, const float value) {
     u1f[glGetUniformLocation(id, name.c_str())] = value;
-    glUniform1f(glGetUniformLocation(id, name.c_str()), value);
+}
+
+void Computation::uniform(const std::string &name, const int value) {
+    u1i[glGetUniformLocation(id, name.c_str())] = value;
 }
 
 void Computation::uniform(const std::string &name, float x, float y) {
@@ -97,7 +112,17 @@ void Computation::uniform(const std::string &name, const ImageData &value) {
     glActiveTexture(GL_TEXTURE0 + utex.size());
     glBindTexture(GL_TEXTURE_2D, value.color);
     utex[glGetUniformLocation(id, name.c_str())] = utex.size();
-    // glUniform1i(glGetUniformLocation(id, name.c_str()), texCount);
-    // texCount++;
+}
+
+void Computation::uniform(const std::string &name, float *data, int len, int stride) {
+    const int loc = glGetUniformLocation(id, name.c_str());
+    if (stride == 1) {
+        u1fv[loc] = { data, len };
+    } else if (stride == 2) {
+        u2fv[loc] = { data, len };
+    } else {
+        std::cout << "Cannot uniform data of stride " << stride << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
